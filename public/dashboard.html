@@ -1,0 +1,28 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — EditLink</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<header><div class="logo">Edit<span>Link</span></div><nav><span class="mute" id="who"></span><button class="sec" id="set">⚙️</button><button class="sec" id="out">Logout</button></nav></header>
+<div class="tiles"><div class="tile"><b id="s1">–</b><span>Client se lena baaki</span></div><div class="tile"><b id="s2">–</b><span>Ab tak mila</span></div><div class="tile"><b id="s3">–</b><span>Review mein</span></div><div class="tile"><b id="s4">–</b><span>Approved</span></div></div>
+<form class="card hidden" id="sf"><h2>Settings</h2><div class="row"><div><label>Naam</label><input name="name"></div><div><label>Brand</label><input name="brand"></div></div><label>UPI ID</label><input name="upi_id"><div class="actions"><button>Save</button></div></form>
+<div class="card"><div style="display:flex;align-items:center"><h2 style="margin:0">Projects</h2><button style="margin-left:auto" id="nb">+ Naya project</button></div>
+<form id="nf" class="hidden" style="margin-top:10px">
+<div class="row"><div><label>Project ka naam *</label><input name="title" required placeholder="Diwali Reel – Sharma Sweets"></div><div><label>Deadline</label><input name="deadline" type="date"></div></div>
+<label>Video link * (YouTube unlisted, Google Drive, ya direct .mp4)</label><input name="video_url" required placeholder="https://youtu.be/...">
+<div class="row"><div><label>Client ka naam</label><input name="client_name"></div><div><label>Client WhatsApp</label><input name="client_phone" inputmode="tel"></div></div>
+<div class="row"><div><label>Project fee (₹)</label><input name="project_fee" type="number" min="0" value="0"></div><div><label>Advance mila (₹)</label><input name="advance" type="number" min="0" value="0"></div></div>
+<div class="row"><div><label>Free revision rounds</label><input name="free_rounds" type="number" min="0" value="2"></div><div><label>Har extra round (₹)</label><input name="extra_round_fee" type="number" min="0" value="300"></div></div>
+<div class="actions"><button class="big">Project banao</button></div></form>
+<table style="margin-top:10px"><thead><tr><th>Project</th><th>Round</th><th>Status</th><th>Baaki</th><th>Naye comment</th></tr></thead><tbody id="tb"></tbody></table></div>
+</div><script src="/static/common.js"></script><script>
+async function load(){const d=await api('/api/me');$('#who').textContent=d.editor.name;
+ $('#s1').textContent=rs(d.stats.pending);$('#s2').textContent=rs(d.stats.earned);$('#s3').textContent=d.stats.in_review;$('#s4').textContent=d.stats.approved;
+ for(const k of ['name','brand','upi_id'])$('#sf').elements[k].value=d.editor[k]||'';
+ if(!d.editor.upi_id)toast('⚙️ Settings mein UPI ID daalo');
+ $('#tb').innerHTML=d.projects.length?d.projects.map(p=>`<tr class="click" onclick="location.href='/app/p/${p.id}'"><td><b>${esc(p.title)}</b><div class="mute">${esc(p.client_name)}${p.deadline?' • 📅 '+p.deadline:''}${p.last_seen_at?' • 👀 client ne dekha':''}</div></td><td>V${p.round}</td>
+ <td>${p.status==='approved'?'<span class="pill ok">Approved</span>':'<span class="pill rev">Review</span>'}</td>
+ <td>${p.due>0?`<span class="pill due">${rs(p.due)}</span>`:'<span class="pill paid">Paid</span>'}</td><td>${p.open_comments||'–'}</td></tr>`).join(''):'<tr><td colspan="5" class="mute">Pehla project banao 👆</td></tr>'}
+$('#nb').onclick=()=>$('#nf').classList.toggle('hidden');$('#set').onclick=()=>$('#sf').classList.toggle('hidden');
+$('#out').onclick=async()=>{await api('/api/logout',{method:'POST'});location.href='/'};
+$('#sf').onsubmit=async e=>{e.preventDefault();await api('/api/me/settings',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});toast('Saved');load()};
+$('#nf').onsubmit=async e=>{e.preventDefault();try{const r=await api('/api/me/projects',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});location.href='/app/p/'+r.id}catch(err){toast(err.message)}};
+load();
+</script></body></html>

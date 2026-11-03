@@ -1,0 +1,28 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EditLink — Client approval aur payment, ek link mein</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<header><div class="logo">Edit<span>Link</span></div></header>
+<div class="hero"><h1>Client ka “thoda aur change” ab ek link mein.<br><span style="color:var(--brand)">Aur paisa milne tak final file lock.</span></h1>
+<p class="mute">Indian video editors aur social media managers ke liye. Client WhatsApp link kholta hai, video pe draw karke ya bolke batata hai, naam likh ke approve karta hai, UPI se pay karta hai — tab final video unlock hota hai.</p></div>
+<div class="feat">
+<div class="card"><h3>🔒 Paisa nahi to file nahi</h3><p class="mute">Preview pe watermark. Pura payment aate hi final download khulta hai.</p></div>
+<div class="card"><h3>✏️ Video pe draw karo</h3><p class="mute">Client frame pe gola bana ke dikhaye “yahan logo”. Time ke saath save.</p></div>
+<div class="card"><h3>🎤 Voice note</h3><p class="mute">Typing nahi aati? Bolke feedback do — editor ke liye to-do ban jata hai.</p></div>
+<div class="card"><h3>🆚 V1 vs V2</h3><p class="mute">Purana aur naya version side-by-side, ek saath chalao.</p></div>
+<div class="card"><h3>📜 Approval certificate</h3><p class="mute">Kisne, kab, kaunsa version approve kiya — baad mein bahaana nahi.</p></div>
+<div class="card"><h3>₹ Revision meter</h3><p class="mute">Free rounds khatam? Har extra round ka charge apne aap judta hai.</p></div>
+</div>
+<div class="card" style="margin-top:16px;max-width:460px">
+<div class="tabs"><button class="on" data-m="login">Login</button><button data-m="register">Naya account</button></div>
+<form id="f">
+<div class="reg hidden"><label>Aapka naam</label><input name="name" placeholder="Asmit"></div>
+<label>WhatsApp number</label><input name="phone" required inputmode="tel" placeholder="9876543210">
+<label>PIN (4–6 digit)</label><input name="pin" required type="password" inputmode="numeric" maxlength="6">
+<div class="reg hidden"><label>UPI ID (payment lene ke liye)</label><input name="upi_id" placeholder="asmit@okaxis">
+<label>Studio / brand naam (optional)</label><input name="brand" placeholder="Asmit Edits"></div>
+<div class="actions"><button class="big" id="go">Login</button></div></form></div>
+</div><script src="/static/common.js"></script><script>
+let mode='login';
+fetch('/api/me').then(r=>{if(r.ok)location.href='/app'});
+$$('.tabs button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.reg').forEach(x=>x.classList.toggle('hidden',mode!=='register'));$('#go').textContent=mode==='login'?'Login':'Account banao'});
+$('#f').onsubmit=async e=>{e.preventDefault();try{await api('/api/'+mode,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});location.href='/app'}catch(err){toast(err.message)}};
+</script></body></html>

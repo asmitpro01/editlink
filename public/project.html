@@ -1,0 +1,63 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project — EditLink</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<header><div class="logo"><a href="/app" style="color:inherit;text-decoration:none">← Edit<span>Link</span></a></div><nav id="pills"></nav></header>
+<div class="card"><h1 id="title">…</h1><p class="mute" id="sub"></p>
+<label>Client review link</label><div class="copy"><input id="rl" readonly><button class="sec" onclick="navigator.clipboard.writeText($('#rl').value);toast('Copied')">Copy</button></div>
+<div class="actions"><a class="btn" id="wa1" target="_blank">📤 WhatsApp pe bhejo</a><a class="btn sec" id="wa2" target="_blank">⏰ Reminder</a><a class="btn warn" id="wa3" target="_blank">₹ Payment yaad dilao</a><a class="btn sec" id="open" target="_blank">Client view</a></div></div>
+<div class="card"><div class="tabs" id="vt"></div><div class="stage player" id="st"><div id="pl" style="width:100%;height:100%"></div></div>
+<div id="cmpw" class="hidden" style="margin-top:10px"><div class="cmp"><div><div class="mute" id="la"></div><div class="player" id="pa"></div></div><div><div class="mute" id="lb"></div><div class="player" id="pb"></div></div></div>
+<div class="actions"><button class="sec" id="sync">▶ Dono saath chalao</button></div></div>
+<div class="actions"><button class="sec" id="cmpb">🆚 Versions compare karo</button></div></div>
+<div class="card"><h2>To-do (client feedback)</h2><p class="mute">Time ya drawing pe click karo — video wahin rukega aur drawing dikhegi.</p><ul class="list" id="cl"></ul>
+<div class="copy" style="margin-top:10px"><input id="rp" placeholder="Client ko reply… (jaise: Done, V2 mein dekh lo)"><button class="sec" id="rpb">Reply</button></div>
+<div class="actions"><button class="sec" id="ai">✨ Smart task list</button></div><pre id="aio" class="mute hidden" style="white-space:pre-wrap"></pre></div>
+<div class="card"><h2>Naya version upload</h2><p class="mute" id="rinfo"></p><label>Naye video ka link</label><input id="nv" placeholder="https://..."><label>Kya badla (client ko dikhega)</label><input id="nn" placeholder="Logo bada kiya, music change kiya">
+<div class="actions"><button class="warn" id="nvb">Version bhejo</button></div></div>
+<div class="card"><h2>💰 Paisa</h2><div class="tiles" style="grid-template-columns:repeat(3,1fr)"><div class="tile"><b id="m1"></b><span>Total (fee + extra rounds)</span></div><div class="tile"><b id="m2"></b><span>Mila</span></div><div class="tile"><b id="m3"></b><span>Baaki</span></div></div>
+<div class="row"><div><label>Payment mila (₹)</label><input id="pamt" type="number"></div><div><label>Note</label><input id="pnote" placeholder="GPay / cash"></div></div><div class="actions"><button class="sec" id="pb">+ Payment add karo</button></div>
+<ul class="list" id="pl2"></ul>
+<label>🔒 Final video ka download link (client ko tabhi dikhega jab approve + pura payment ho)</label><div class="copy"><input id="fu" placeholder="Drive / WeTransfer link"><button class="sec" id="fub">Save</button></div>
+<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="mu" style="width:auto"> Bina pure payment ke bhi unlock kar do</label></div>
+<details class="card"><summary><b>Project settings</b></summary><form id="ps"><div class="row"><div><label>Naam</label><input name="title"></div><div><label>Deadline</label><input name="deadline" type="date"></div></div>
+<div class="row"><div><label>Client</label><input name="client_name"></div><div><label>Client WhatsApp</label><input name="client_phone"></div></div>
+<div class="row"><div><label>Project fee</label><input name="project_fee" type="number"></div><div><label>Free rounds</label><input name="free_rounds" type="number"></div></div>
+<label>Extra round fee</label><input name="extra_round_fee" type="number"><div class="actions"><button>Save</button></div></form></details>
+<div class="card"><h2>Activity</h2><ul class="list" id="ev"></ul><div class="actions"><a class="btn sec hidden" id="cert" target="_blank">📜 Approval certificate</a><button class="red" id="del">Delete project</button></div></div>
+</div><script src="/static/common.js"></script><script>
+const ID=location.pathname.split('/').pop();let D,P,player,cur,stage=$('#st');
+const link=()=>location.origin+'/r/'+P.review_token;
+async function load(){D=await api('/api/me/projects/'+ID);P=D.project;
+ $('#title').textContent=P.title;$('#sub').textContent=`Client: ${P.client_name||'–'} • Version ${P.round} • ${P.free_rounds} free rounds${P.deadline?' • 📅 '+P.deadline:''}${P.last_seen_at?' • 👀 client ne last dekha '+P.last_seen_at+' UTC':''}`;
+ $('#pills').innerHTML=(P.status==='approved'?'<span class="pill ok">Approved</span>':'<span class="pill rev">Review mein</span>')+' '+(P.due>0?`<span class="pill due">${rs(P.due)} baaki</span>`:'<span class="pill paid">Paid</span>');
+ $('#rl').value=link();$('#open').href='/r/'+P.review_token;const ph=P.client_phone;
+ $('#wa1').href=waUrl(ph,`Namaste ${P.client_name||''} 🙏\n"${P.title}" ka Version ${P.round} ready hai.\nVideo pe hi comment / voice note do, ya pasand aaye to Approve dabao:\n${link()}`);
+ $('#wa2').href=waUrl(ph,`Namaste ${P.client_name||''}, "${P.title}" aapke review ka wait kar raha hai 🙂\n${link()}`);
+ $('#wa3').href=waUrl(ph,`Namaste ${P.client_name||''}, "${P.title}" ka ${rs(P.due)} baaki hai. Payment hote hi final HD video unlock ho jayega 🔓\nLink pe UPI button hai: ${link()}`);
+ $('#vt').innerHTML=D.versions.map(v=>`<button data-r="${v.round}">V${v.round}</button>`).join('');$$('#vt button').forEach(b=>b.onclick=()=>show(+b.dataset.r));
+ if(!cur)show(P.round);else renderComments();
+ const nx=P.round+1,ex=Math.max(0,nx-P.free_rounds);$('#rinfo').textContent=ex>0?`Version ${nx} paid round hai: +${rs(P.extra_round_fee)} client ke bill mein judega.`:`Version ${nx} free round mein hai.`;
+ $('#m1').textContent=rs(P.total);$('#m2').textContent=rs(P.paid_total);$('#m3').textContent=rs(P.due);
+ $('#pl2').innerHTML=D.payments.map(x=>`<li><b>${rs(x.amount)}</b><span class="mute">${esc(x.note)} • ${x.created_at}</span></li>`).join('');
+ $('#fu').value=P.final_url||'';$('#mu').checked=!!P.manual_unlock;
+ const f=$('#ps').elements;for(const k of ['title','deadline','client_name','client_phone','project_fee','free_rounds','extra_round_fee'])f[k].value=P[k]??'';
+ $('#ev').innerHTML=D.events.map(e=>`<li><span class="pill rev">${esc(e.kind)}</span><span>${esc(e.detail)}</span><span class="mute" style="margin-left:auto">${e.created_at}</span></li>`).join('');
+ $('#cert').classList.toggle('hidden',P.status!=='approved');$('#cert').href='/c/'+P.review_token}
+function show(r){cur=r;const v=D.versions.find(x=>x.round===r);$$('#vt button').forEach(b=>b.classList.toggle('on',+b.dataset.r===r));
+ stage.querySelector('.ovl')?.remove();player=mountPlayer($('#pl'),v.video_url);renderComments()}
+function renderComments(){const cs=D.comments.filter(c=>c.round===cur);$('#cl').innerHTML=cs.length?cs.map(c=>commentHTML(c,{editor:true})).join(''):'<li class="mute">Is version pe abhi koi feedback nahi.</li>';
+ bindSeek(player,stage);$$('#cl input[type=checkbox]').forEach(e=>e.onchange=async()=>{await api(`/api/me/projects/${ID}/comments/${e.dataset.id}/toggle`,{method:'POST'});load()})}
+const post=(s,b)=>api(`/api/me/projects/${ID}/${s}`,{method:'POST',body:JSON.stringify(b)});
+$('#rpb').onclick=async()=>{if(!$('#rp').value)return;await post('reply',{text:$('#rp').value,ts:player.getTime()?Math.floor(player.getTime()):null});$('#rp').value='';load()};
+$('#ai').onclick=async()=>{const r=await api(`/api/me/projects/${ID}/tasks`);const o=$('#aio');o.classList.remove('hidden');o.textContent=r.tasks.length?r.tasks.map((t,i)=>r.source==='ai'?t:`${i+1}. ${t}`).join('\n')+(r.source==='basic'?'\n\n(AI key lagane pe ye aur smart banegi)':''):'Koi feedback nahi.'};
+$('#nvb').onclick=async()=>{try{const r=await post('version',{video_url:$('#nv').value.trim(),note:$('#nn').value});$('#nv').value=$('#nn').value='';cur=null;await load();toast('Version '+r.round+' live');window.open($('#wa1').href,'_blank')}catch(e){toast(e.message)}};
+$('#pb').onclick=async()=>{try{await post('payment',{amount:$('#pamt').value,note:$('#pnote').value});$('#pamt').value=$('#pnote').value='';load();toast('Payment add hua')}catch(e){toast(e.message)}};
+$('#fub').onclick=async()=>{await post('settings',{final_url:$('#fu').value.trim()});toast('Final link save');load()};
+$('#mu').onchange=async()=>{await post('settings',{manual_unlock:$('#mu').checked});load()};
+$('#ps').onsubmit=async e=>{e.preventDefault();await post('settings',Object.fromEntries(new FormData(e.target)));toast('Saved');load()};
+$('#del').onclick=async()=>{if(!confirm('Pakka delete?'))return;await api('/api/me/projects/'+ID,{method:'DELETE'});location.href='/app'};
+// compare
+let A,B;$('#cmpb').onclick=()=>{const w=$('#cmpw');w.classList.toggle('hidden');if(w.classList.contains('hidden')||D.versions.length<2){if(D.versions.length<2){toast('Compare ke liye 2 versions chahiye');w.classList.add('hidden')}return}
+ const vs=D.versions,a=vs.at(-2),b=vs.at(-1);$('#la').textContent='V'+a.round+(a.note?' — '+a.note:'');$('#lb').textContent='V'+b.round+(b.note?' — '+b.note:'');A=mountPlayer($('#pa'),a.video_url);B=mountPlayer($('#pb'),b.video_url)};
+$('#sync').onclick=()=>{if(!A)return;const t=A.getTime()||0;B.seek(t);A.play();B.play()};
+load().catch(e=>$('#title').textContent=e.message);
+</script></body></html>
