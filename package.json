@@ -1,6 +1,6 @@
 {
   "name": "editlink",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "WhatsApp-first video review & approval tool for Indian freelance editors",
   "main": "server.js",
   "type": "commonjs",

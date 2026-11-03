@@ -1,41 +1,62 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Video review — EditLink</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
-<header><div class="logo">Edit<span>Link</span></div><span id="st"></span></header>
-<div class="card"><h1 id="title">…</h1><p class="mute" id="sub"></p><div class="player" id="pl"></div></div>
-<div class="card" id="box"><h2>Apna feedback do</h2>
-<p class="mute" id="hint">Video rok ke likho — time apne aap lag jayega.</p>
+<header><div class="logo" id="brand">Edit<span>Link</span></div><nav id="st"></nav></header>
+<div class="card"><h1 id="title">…</h1><p class="mute" id="sub"></p><div class="tabs" id="vt"></div>
+<div class="stage player" id="stage"><div id="pl" style="width:100%;height:100%"></div><div class="wm" id="wm"></div></div>
+<div id="cmpw" class="hidden" style="margin-top:10px"><div class="cmp"><div><div class="mute" id="la"></div><div class="player" id="pa"></div></div><div><div class="mute" id="lb"></div><div class="player" id="pb"></div></div></div><div class="actions"><button class="sec" id="sync">▶ Dono saath chalao</button></div></div>
+<div class="actions"><button class="sec hidden" id="cmpb">🆚 Purana vs Naya</button></div></div>
+<div class="card" id="box"><h2>Kya badalna hai?</h2><p class="mute" id="hint">Video rok ke likho — time apne aap lag jayega. Screen pe ✏️ draw karke bhi dikha sakte ho.</p>
 <div class="row"><div><label>Time (min:sec)</label><input id="ts" placeholder="0:42"></div><div><label>Aapka naam</label><input id="au"></div></div>
-<label>Kya badalna hai?</label><textarea id="tx" placeholder="Yahan logo thoda bada karo, music dheema karo…"></textarea>
-<div class="actions"><button id="send">Comment bhejo</button><button class="sec" id="rec">🎤 Voice note</button><button class="sec" id="now">⏱ Abhi ka time</button></div></div>
-<div class="card"><h2>Is round ke comments</h2><ul class="list" id="cl"></ul></div>
-<div class="card" id="apr"><h2>Video pasand aaya?</h2><p class="mute" id="due"></p><div class="actions"><button class="big" id="ok">✅ Approve karo</button><a class="btn warn hidden" id="pay" >UPI se pay karo</a></div></div>
+<label>Comment</label><textarea id="tx" placeholder="Yahan logo thoda bada karo, music dheema karo…"></textarea>
+<div class="actions"><button id="send">Bhejo</button><button class="sec" id="rec">🎤 Bolke batao</button><button class="sec" id="drw">✏️ Screen pe draw</button><button class="sec" id="now">⏱ Abhi ka time</button></div>
+<div class="actions hidden" id="dtools"><span class="colors"><i style="background:#ff3b3b" class="on"></i><i style="background:#ffd400"></i><i style="background:#25d366"></i><i style="background:#3fa9ff"></i><i style="background:#fff"></i></span><button class="sec" id="dclr">Saaf karo</button><span class="mute">Video pe gola / arrow banao, phir “Bhejo”.</span></div></div>
+<div class="card"><h2>Comments</h2><ul class="list" id="cl"></ul></div>
+<div class="card" id="apr"><h2 id="ah">Video pasand aaya?</h2><div id="bill" class="mute"></div>
+<div id="abox"><label>Approve karne ke liye apna poora naam likho</label><input id="an"><div class="actions"><button class="big" id="ok">✅ Final approve</button></div></div>
+<div class="actions"><a class="btn warn hidden big" id="pay">UPI se pay karo</a></div>
+<div class="lock hidden" id="lock">🔒 <span id="lockt"></span></div>
+<div class="actions"><a class="btn big hidden" id="dl" target="_blank" rel="noopener">⬇️ Final video download karo</a><a class="btn sec hidden" id="cert" target="_blank">📜 Approval certificate</a></div></div>
+<p class="mute" style="text-align:center">Powered by EditLink</p>
 </div><script src="/static/common.js"></script><script>
-const T=location.pathname.split('/').pop();let P,player,rec,chunks=[];
-async function load(){const d=await api('/api/review/'+T);P=d.project;
- if(!player){player=mountPlayer($('#pl'),P.video_url);if(!player.canTime){$('#hint').textContent='Time khud likho (jaise 1:05), phir comment karo.';$('#now').classList.add('hidden')}}
- $('#title').textContent=P.title;$('#sub').textContent=`Round ${P.round}${P.editor_name?' • Editor: '+P.editor_name:''}`;
- if(!$('#au').value)$('#au').value=P.client_name||'';
+const T=location.pathname.split('/').pop();let D,P,player,cur,rec,chunks=[],stage=$('#stage'),pen=drawLayer(stage),drawing=false,first=true;
+async function load(){D=await api('/api/review/'+T+(first?'?seen=1':''));first=false;P=D.project;
+ if(P.brand)$('#brand').textContent=P.brand;document.title=P.title+' — Review';
+ $('#title').textContent=P.title;$('#sub').textContent=`Version ${P.round}${P.editor_name?' • Editor: '+P.editor_name:''}${P.deadline?' • 📅 '+P.deadline:''}`;
  const ap=P.status==='approved';$('#st').innerHTML=ap?'<span class="pill ok">Approved</span>':'<span class="pill rev">Review mein</span>';
- $('#box').classList.toggle('hidden',ap);$('#ok').disabled=ap;$('#ok').textContent=ap?'✅ Approved':'✅ Approve karo';
- if(P.amount_due>0&&P.upi_id){$('#due').textContent=`Extra revisions: ${P.extra_rounds} × ₹${P.extra_round_fee} = ₹${P.amount_due}`;
-  const pay=$('#pay');pay.classList.remove('hidden');pay.textContent=`UPI se ₹${P.amount_due} pay karo`;
-  pay.href=`upi://pay?pa=${encodeURIComponent(P.upi_id)}&pn=${encodeURIComponent(P.editor_name||'Editor')}&am=${P.amount_due}&cu=INR&tn=${encodeURIComponent('EditLink '+P.title)}`}
- else $('#due').textContent=`${P.free_rounds} revision rounds free hain.`;
- $('#cl').innerHTML=d.comments.length?d.comments.map(c=>`<li><span class="ts" data-t="${c.ts??''}">${fmt(c.ts)}</span><div><div>${esc(c.text)}</div>${c.audio_file?`<audio controls src="/audio/${c.audio_file}"></audio>`:''}<div class="mute">${esc(c.author)}</div></div></li>`).join(''):'<li class="mute">Abhi koi comment nahi.</li>';
- document.querySelectorAll('.ts').forEach(e=>e.onclick=()=>e.dataset.t&&player.seek(+e.dataset.t));}
+ $('#box').classList.toggle('hidden',ap);$('#abox').classList.toggle('hidden',ap);if(!$('#au').value)$('#au').value=P.client_name||'';if(!$('#an').value)$('#an').value=P.client_name||'';
+ $('#wm').innerHTML=P.unlocked?'':Array(24).fill(`PREVIEW • ${esc(P.brand||P.editor_name||'EditLink')}`).map(x=>`<span>${x}</span>`).join('');
+ $('#vt').innerHTML=D.versions.length>1?D.versions.map(v=>`<button data-r="${v.round}">V${v.round}</button>`).join(''):'';$$('#vt button').forEach(b=>b.onclick=()=>show(+b.dataset.r));
+ $('#cmpb').classList.toggle('hidden',D.versions.length<2);
+ if(cur==null)show(P.round);else renderComments();
+ const lines=[];if(P.project_fee)lines.push(`Project fee: ${rs(P.project_fee)}`);if(P.extra_rounds)lines.push(`Extra revisions: ${P.extra_rounds} × ${rs(P.extra_round_fee)}`);if(P.paid_total)lines.push(`Mil chuka: ${rs(P.paid_total)}`);
+ lines.push(P.due>0?`<b style="color:var(--text)">Baaki: ${rs(P.due)}</b>`:(P.total?'✅ Pura payment ho gaya':''));
+ if(!P.extra_rounds&&P.round<=P.free_rounds)lines.push(`${P.free_rounds-P.round} free revision round bache hain${P.extra_round_fee?`, uske baad ${rs(P.extra_round_fee)} per round`:''}.`);
+ $('#bill').innerHTML=lines.filter(Boolean).join('<br>');
+ const pay=$('#pay');if(P.due>0&&P.upi_id){pay.classList.remove('hidden');pay.textContent=`UPI se ${rs(P.due)} pay karo`;pay.href=upiUrl(P.upi_id,P.editor_name,P.due,'EditLink '+P.title)}else pay.classList.add('hidden');
+ $('#ah').textContent=ap?`✅ Approved by ${P.approved_by}`:'Video pasand aaya?';
+ const lock=$('#lock');if(P.has_final&&!P.unlocked){lock.classList.remove('hidden');$('#lockt').textContent=ap?'Final HD video payment ke baad unlock hoga. Payment karke editor ko bata do.':'Final HD video approve aur payment ke baad unlock hoga.'}else lock.classList.add('hidden');
+ $('#dl').classList.toggle('hidden',!(P.unlocked&&P.final_url));if(P.final_url)$('#dl').href=P.final_url;
+ $('#cert').classList.toggle('hidden',!ap);$('#cert').href='/c/'+T}
+function show(r){cur=r;const v=D.versions.find(x=>x.round===r);$$('#vt button').forEach(b=>b.classList.toggle('on',+b.dataset.r===r));player=mountPlayer($('#pl'),v.video_url);
+ const can=player.canTime;$('#now').classList.toggle('hidden',!can);$('#hint').textContent=can?'Video rok ke likho — time apne aap lag jayega. ✏️ se screen pe draw bhi kar sakte ho.':'Time khud likho (jaise 1:05). ✏️ se screen pe draw bhi kar sakte ho.';renderComments()}
+function renderComments(){const cs=D.comments.filter(c=>c.round===cur);$('#cl').innerHTML=(cur!==P.round?`<li class="mute">Ye purana version (V${cur}) hai.${D.versions.find(v=>v.round===P.round)?.note?' V'+P.round+' mein badla: '+esc(D.versions.find(v=>v.round===P.round).note):''}</li>`:'')+(cs.length?cs.map(c=>commentHTML(c)).join(''):'<li class="mute">Abhi koi comment nahi.</li>');bindSeek(player,stage)}
 const curTs=()=>{const m=parseTs($('#ts').value);if(m!=null)return m;const t=player.getTime();return t==null?null:Math.floor(t)};
 $('#now').onclick=()=>{const t=player.getTime();if(t!=null)$('#ts').value=fmt(Math.floor(t))};
-$('#tx').onfocus=()=>{const t=player.getTime();if(t!=null&&!$('#ts').value)$('#ts').value=fmt(Math.floor(t))};
-$('#send').onclick=async()=>{try{await api(`/api/review/${T}/comments`,{method:'POST',body:JSON.stringify({ts:curTs(),text:$('#tx').value,author:$('#au').value})});$('#tx').value='';$('#ts').value='';toast('Bhej diya ✅');load()}catch(e){toast(e.message)}};
-$('#rec').onclick=async()=>{
- if(rec&&rec.state==='recording'){rec.stop();return}
- try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const ts=curTs();chunks=[];rec=new MediaRecorder(s);
-  rec.ondataavailable=e=>chunks.push(e.data);
-  rec.onstop=async()=>{s.getTracks().forEach(t=>t.stop());$('#rec').textContent='🎤 Voice note';$('#rec').classList.remove('rec');
-   const b=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
-   const r=await fetch(`/api/review/${T}/voice?ts=${ts??''}`,{method:'POST',headers:{'Content-Type':b.type},body:b});
-   toast(r.ok?'Voice note bhej diya ✅':'Voice note fail hua');load()};
-  rec.start();$('#rec').textContent='⏹ Rokne ke liye dabao';$('#rec').classList.add('rec')}catch(e){toast('Mic ki permission do')}};
-$('#ok').onclick=async()=>{if(!confirm('Final approve karna hai?'))return;await api(`/api/review/${T}/approve`,{method:'POST'});toast('Approved! Shukriya 🙏');load()};
-load().catch(e=>{$('#title').textContent=e.message});
+$('#tx').onfocus=()=>{const t=player.getTime();if(t!=null&&!$('#ts').value){player.pause();$('#ts').value=fmt(Math.floor(t))}};
+$('#drw').onclick=()=>{drawing=!drawing;if(drawing){player.pause();const t=player.getTime();if(t!=null&&!$('#ts').value)$('#ts').value=fmt(Math.floor(t));pen.on();$('#drw').textContent='✏️ Drawing chalu (band karo)'}else{pen.off();$('#drw').textContent='✏️ Screen pe draw'}$('#dtools').classList.toggle('hidden',!drawing)};
+$$('.colors i').forEach(i=>i.onclick=()=>{$$('.colors i').forEach(x=>x.classList.remove('on'));i.classList.add('on');pen.setColor(i.style.background)});
+$('#dclr').onclick=()=>pen.clear();
+$('#send').onclick=async()=>{try{await api(`/api/review/${T}/comments`,{method:'POST',body:JSON.stringify({ts:curTs(),text:$('#tx').value,author:$('#au').value,drawing:pen.data()})});
+ $('#tx').value='';$('#ts').value='';pen.clear();if(drawing)$('#drw').click();toast('Bhej diya ✅');load()}catch(e){toast(e.message)}};
+$('#rec').onclick=async()=>{if(rec&&rec.state==='recording'){rec.stop();return}
+ try{const s=await navigator.mediaDevices.getUserMedia({audio:true});player.pause();const ts=curTs();chunks=[];rec=new MediaRecorder(s);rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=async()=>{s.getTracks().forEach(t=>t.stop());$('#rec').textContent='🎤 Bolke batao';$('#rec').classList.remove('rec');const b=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
+   const r=await fetch(`/api/review/${T}/voice?ts=${ts??''}&author=${encodeURIComponent($('#au').value)}`,{method:'POST',headers:{'Content-Type':b.type},body:b});toast(r.ok?'Voice note bhej diya ✅':'Voice note fail hua');$('#ts').value='';load()};
+  rec.start();$('#rec').textContent='⏹ Bas, bhejo';$('#rec').classList.add('rec')}catch(e){toast('Mic ki permission do')}};
+$('#ok').onclick=async()=>{const n=$('#an').value.trim();if(n.length<2)return toast('Apna naam likho');if(!confirm(`"${n}" ke naam se Version ${P.round} final approve karna hai?`))return;
+ try{await api(`/api/review/${T}/approve`,{method:'POST',body:JSON.stringify({name:n})});toast('Approved! Shukriya 🙏');load()}catch(e){toast(e.message)}};
+let A,B;$('#cmpb').onclick=()=>{const w=$('#cmpw');w.classList.toggle('hidden');if(w.classList.contains('hidden'))return;const a=D.versions.at(-2),b=D.versions.at(-1);
+ $('#la').textContent='Purana V'+a.round;$('#lb').textContent='Naya V'+b.round+(b.note?' — '+b.note:'');A=mountPlayer($('#pa'),a.video_url);B=mountPlayer($('#pb'),b.video_url)};
+$('#sync').onclick=()=>{if(!A)return;B.seek(A.getTime()||0);A.play();B.play()};
+load().catch(e=>{$('#title').textContent=e.message;$('#box').classList.add('hidden');$('#apr').classList.add('hidden')});
 </script></body></html>

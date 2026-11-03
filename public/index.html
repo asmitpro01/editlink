@@ -1,32 +1,28 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EditLink — Client review, WhatsApp pe</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<title>EditLink — Client approval aur payment, ek link mein</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
 <header><div class="logo">Edit<span>Link</span></div></header>
-<div class="card"><h1>Client ko video bhejo, feedback ek jagah pao</h1>
-<p class="mute">Link banao → WhatsApp pe bhejo → client video pe timestamp comment / voice note de → ek tap mein approve. Extra revision ka paisa UPI se.</p></div>
-<form class="card" id="f"><h2>Naya project</h2>
-<div class="row"><div><label>Project ka naam *</label><input name="title" required placeholder="Diwali Reel – Sharma Sweets"></div>
-<div><label>Aapka naam</label><input name="editor_name" placeholder="Asmit"></div></div>
-<label>Video link * (YouTube unlisted, Google Drive, ya direct .mp4)</label><input name="video_url" required placeholder="https://youtu.be/...">
-<div class="row"><div><label>Client ka naam</label><input name="client_name" placeholder="Sharma ji"></div>
-<div><label>Client WhatsApp number</label><input name="client_phone" placeholder="9876543210"></div></div>
-<div class="row"><div><label>Free revision rounds</label><input name="free_rounds" type="number" value="2" min="0"></div>
-<div><label>Har extra round ka charge (₹)</label><input name="extra_round_fee" type="number" value="300" min="0"></div></div>
-<label>Aapki UPI ID (extra payment ke liye)</label><input name="upi_id" placeholder="asmit@upi">
-<div class="actions"><button class="big">Review link banao</button></div></form>
-<div class="card hidden" id="done"><h2>✅ Ready!</h2>
-<label>Client ka review link (isse bhejo)</label><div class="copy"><input id="rl" readonly><button class="sec" onclick="navigator.clipboard.writeText($('#rl').value);toast('Copied')">Copy</button></div>
-<div class="actions"><a class="btn" id="wa" target="_blank">WhatsApp pe bhejo</a><a class="btn sec" id="ed">Mera dashboard kholo</a></div>
-<p class="mute">⚠️ Dashboard link save kar lo (bookmark). Ye sirf aapke liye hai.</p></div>
-<div class="card" id="mine"><h2>Mere projects (is phone/laptop pe)</h2><ul class="list" id="ml"></ul></div>
+<div class="hero"><h1>Client ka “thoda aur change” ab ek link mein.<br><span style="color:var(--brand)">Aur paisa milne tak final file lock.</span></h1>
+<p class="mute">Indian video editors aur social media managers ke liye. Client WhatsApp link kholta hai, video pe draw karke ya bolke batata hai, naam likh ke approve karta hai, UPI se pay karta hai — tab final video unlock hota hai.</p></div>
+<div class="feat">
+<div class="card"><h3>🔒 Paisa nahi to file nahi</h3><p class="mute">Preview pe watermark. Pura payment aate hi final download khulta hai.</p></div>
+<div class="card"><h3>✏️ Video pe draw karo</h3><p class="mute">Client frame pe gola bana ke dikhaye “yahan logo”. Time ke saath save.</p></div>
+<div class="card"><h3>🎤 Voice note</h3><p class="mute">Typing nahi aati? Bolke feedback do — editor ke liye to-do ban jata hai.</p></div>
+<div class="card"><h3>🆚 V1 vs V2</h3><p class="mute">Purana aur naya version side-by-side, ek saath chalao.</p></div>
+<div class="card"><h3>📜 Approval certificate</h3><p class="mute">Kisne, kab, kaunsa version approve kiya — baad mein bahaana nahi.</p></div>
+<div class="card"><h3>₹ Revision meter</h3><p class="mute">Free rounds khatam? Har extra round ka charge apne aap judta hai.</p></div>
+</div>
+<div class="card" style="margin-top:16px;max-width:460px">
+<div class="tabs"><button class="on" data-m="login">Login</button><button data-m="register">Naya account</button></div>
+<form id="f">
+<div class="reg hidden"><label>Aapka naam</label><input name="name" placeholder="Asmit"></div>
+<label>WhatsApp number</label><input name="phone" required inputmode="tel" placeholder="9876543210">
+<label>PIN (4–6 digit)</label><input name="pin" required type="password" inputmode="numeric" maxlength="6">
+<div class="reg hidden"><label>UPI ID (payment lene ke liye)</label><input name="upi_id" placeholder="asmit@okaxis">
+<label>Studio / brand naam (optional)</label><input name="brand" placeholder="Asmit Edits"></div>
+<div class="actions"><button class="big" id="go">Login</button></div></form></div>
 </div><script src="/static/common.js"></script><script>
-const KEY='editlink_projects';const mine=()=>JSON.parse(localStorage.getItem(KEY)||'[]');
-function renderMine(){const l=mine();$('#ml').innerHTML=l.length?l.map(p=>`<li><a class="btn sec" href="/e/${p.e}">${esc(p.t)}</a></li>`).join(''):'<li class="mute">Abhi koi project nahi.</li>'}
-renderMine();
-$('#f').onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));
- try{const r=await api('/api/projects',{method:'POST',body:JSON.stringify(d)});
- const link=location.origin+'/r/'+r.review_token;$('#rl').value=link;
- const msg=`Namaste ${d.client_name||''} 🙏\n"${d.title}" ka video ready hai. Yahan dekh ke seedha video pe comment ya voice note do, aur pasand aaye to Approve dabao:\n${link}`;
- const ph=(d.client_phone||'').replace(/\D/g,'');$('#wa').href=`https://wa.me/${ph?(ph.length===10?'91'+ph:ph):''}?text=${encodeURIComponent(msg)}`;
- $('#ed').href='/e/'+r.editor_token;localStorage.setItem(KEY,JSON.stringify([{e:r.editor_token,t:d.title},...mine()]));renderMine();
- $('#done').classList.remove('hidden');$('#done').scrollIntoView({behavior:'smooth'});}catch(err){toast(err.message)}};
+let mode='login';
+fetch('/api/me').then(r=>{if(r.ok)location.href='/app'});
+$$('.tabs button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;$$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.reg').forEach(x=>x.classList.toggle('hidden',mode!=='register'));$('#go').textContent=mode==='login'?'Login':'Account banao'});
+$('#f').onsubmit=async e=>{e.preventDefault();try{await api('/api/'+mode,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});location.href='/app'}catch(err){toast(err.message)}};
 </script></body></html>

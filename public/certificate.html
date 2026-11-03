@@ -1,0 +1,11 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Approval Certificate — EditLink</title><link rel="stylesheet" href="/static/style.css">
+<style>@media print{body{background:#fff;color:#000}.card{border:2px solid #000;background:#fff}.mute{color:#444}.noprint{display:none}}.cert{max-width:640px;margin:30px auto;text-align:center;padding:36px}.cert table td{border:0;padding:6px}.cert h1{font-size:28px}</style></head><body>
+<div class="card cert"><div class="logo" id="brand">Edit<span>Link</span></div><h1>Video Approval Certificate</h1><p class="mute">Ye record dikhata hai ki client ne neeche diya gaya version final approve kiya.</p>
+<table id="t" style="margin:20px auto;text-align:left"></table><p class="mute" id="h"></p><button class="noprint" onclick="print()">🖨 Print / PDF save karo</button></div>
+<script src="/static/common.js"></script><script>
+api('/api/review/'+location.pathname.split('/').pop()).then(d=>{const p=d.project;if(p.brand)$('#brand').textContent=p.brand;
+ if(p.status!=='approved'){$('#t').innerHTML='<tr><td>Ye project abhi approve nahi hua hai.</td></tr>';return}
+ const v=d.versions.find(x=>x.round===p.round);const rows=[['Project',p.title],['Client',p.client_name],['Approved by',p.approved_by],['Approved at',new Date(p.approved_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})+' IST'],['Version',`V${p.round} (${p.round-1} revision round)`],['Editor',p.editor_name],['Video',v?.video_url||'']];
+ $('#t').innerHTML=rows.map(r=>`<tr><td class="mute">${r[0]}</td><td><b>${esc(r[1])}</b></td></tr>`).join('');$('#h').textContent='Verification code: '+p.approval_hash}).catch(e=>$('#t').innerHTML=`<tr><td>${esc(e.message)}</td></tr>`);
+</script></body></html>
