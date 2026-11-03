@@ -1,0 +1,41 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video review — EditLink</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<header><div class="logo">Edit<span>Link</span></div><span id="st"></span></header>
+<div class="card"><h1 id="title">…</h1><p class="mute" id="sub"></p><div class="player" id="pl"></div></div>
+<div class="card" id="box"><h2>Apna feedback do</h2>
+<p class="mute" id="hint">Video rok ke likho — time apne aap lag jayega.</p>
+<div class="row"><div><label>Time (min:sec)</label><input id="ts" placeholder="0:42"></div><div><label>Aapka naam</label><input id="au"></div></div>
+<label>Kya badalna hai?</label><textarea id="tx" placeholder="Yahan logo thoda bada karo, music dheema karo…"></textarea>
+<div class="actions"><button id="send">Comment bhejo</button><button class="sec" id="rec">🎤 Voice note</button><button class="sec" id="now">⏱ Abhi ka time</button></div></div>
+<div class="card"><h2>Is round ke comments</h2><ul class="list" id="cl"></ul></div>
+<div class="card" id="apr"><h2>Video pasand aaya?</h2><p class="mute" id="due"></p><div class="actions"><button class="big" id="ok">✅ Approve karo</button><a class="btn warn hidden" id="pay" >UPI se pay karo</a></div></div>
+</div><script src="/static/common.js"></script><script>
+const T=location.pathname.split('/').pop();let P,player,rec,chunks=[];
+async function load(){const d=await api('/api/review/'+T);P=d.project;
+ if(!player){player=mountPlayer($('#pl'),P.video_url);if(!player.canTime){$('#hint').textContent='Time khud likho (jaise 1:05), phir comment karo.';$('#now').classList.add('hidden')}}
+ $('#title').textContent=P.title;$('#sub').textContent=`Round ${P.round}${P.editor_name?' • Editor: '+P.editor_name:''}`;
+ if(!$('#au').value)$('#au').value=P.client_name||'';
+ const ap=P.status==='approved';$('#st').innerHTML=ap?'<span class="pill ok">Approved</span>':'<span class="pill rev">Review mein</span>';
+ $('#box').classList.toggle('hidden',ap);$('#ok').disabled=ap;$('#ok').textContent=ap?'✅ Approved':'✅ Approve karo';
+ if(P.amount_due>0&&P.upi_id){$('#due').textContent=`Extra revisions: ${P.extra_rounds} × ₹${P.extra_round_fee} = ₹${P.amount_due}`;
+  const pay=$('#pay');pay.classList.remove('hidden');pay.textContent=`UPI se ₹${P.amount_due} pay karo`;
+  pay.href=`upi://pay?pa=${encodeURIComponent(P.upi_id)}&pn=${encodeURIComponent(P.editor_name||'Editor')}&am=${P.amount_due}&cu=INR&tn=${encodeURIComponent('EditLink '+P.title)}`}
+ else $('#due').textContent=`${P.free_rounds} revision rounds free hain.`;
+ $('#cl').innerHTML=d.comments.length?d.comments.map(c=>`<li><span class="ts" data-t="${c.ts??''}">${fmt(c.ts)}</span><div><div>${esc(c.text)}</div>${c.audio_file?`<audio controls src="/audio/${c.audio_file}"></audio>`:''}<div class="mute">${esc(c.author)}</div></div></li>`).join(''):'<li class="mute">Abhi koi comment nahi.</li>';
+ document.querySelectorAll('.ts').forEach(e=>e.onclick=()=>e.dataset.t&&player.seek(+e.dataset.t));}
+const curTs=()=>{const m=parseTs($('#ts').value);if(m!=null)return m;const t=player.getTime();return t==null?null:Math.floor(t)};
+$('#now').onclick=()=>{const t=player.getTime();if(t!=null)$('#ts').value=fmt(Math.floor(t))};
+$('#tx').onfocus=()=>{const t=player.getTime();if(t!=null&&!$('#ts').value)$('#ts').value=fmt(Math.floor(t))};
+$('#send').onclick=async()=>{try{await api(`/api/review/${T}/comments`,{method:'POST',body:JSON.stringify({ts:curTs(),text:$('#tx').value,author:$('#au').value})});$('#tx').value='';$('#ts').value='';toast('Bhej diya ✅');load()}catch(e){toast(e.message)}};
+$('#rec').onclick=async()=>{
+ if(rec&&rec.state==='recording'){rec.stop();return}
+ try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const ts=curTs();chunks=[];rec=new MediaRecorder(s);
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=async()=>{s.getTracks().forEach(t=>t.stop());$('#rec').textContent='🎤 Voice note';$('#rec').classList.remove('rec');
+   const b=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
+   const r=await fetch(`/api/review/${T}/voice?ts=${ts??''}`,{method:'POST',headers:{'Content-Type':b.type},body:b});
+   toast(r.ok?'Voice note bhej diya ✅':'Voice note fail hua');load()};
+  rec.start();$('#rec').textContent='⏹ Rokne ke liye dabao';$('#rec').classList.add('rec')}catch(e){toast('Mic ki permission do')}};
+$('#ok').onclick=async()=>{if(!confirm('Final approve karna hai?'))return;await api(`/api/review/${T}/approve`,{method:'POST'});toast('Approved! Shukriya 🙏');load()};
+load().catch(e=>{$('#title').textContent=e.message});
+</script></body></html>

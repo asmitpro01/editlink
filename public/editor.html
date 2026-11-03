@@ -1,0 +1,39 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — EditLink</title><link rel="stylesheet" href="/static/style.css"></head><body><div class="wrap">
+<header><div class="logo"><a href="/" style="color:inherit;text-decoration:none">Edit<span>Link</span></a></div><span id="st"></span></header>
+<div class="card"><h1 id="title">…</h1><p class="mute" id="sub"></p>
+<label>Client review link</label><div class="copy"><input id="rl" readonly><button class="sec" onclick="navigator.clipboard.writeText($('#rl').value);toast('Copied')">Copy</button></div>
+<div class="actions"><a class="btn" id="wa" target="_blank">WhatsApp pe bhejo</a><a class="btn sec" id="open" target="_blank">Client view dekho</a></div></div>
+<div class="card"><div class="player" id="pl"></div></div>
+<div class="card"><h2>To-do list (client feedback se)</h2><p class="mute">Tick karo jo ho gaya. Time pe click karo to video wahan chalega.</p><ul class="list" id="cl"></ul>
+<div class="actions"><button class="sec" id="ai">✨ Saaf task list banao</button></div><pre id="aio" class="mute hidden" style="white-space:pre-wrap"></pre></div>
+<div class="card"><h2>Naya version bhejo</h2><p class="mute" id="rinfo"></p><label>Naye video ka link (khaali chhodo to wahi rahega)</label><input id="nv" placeholder="https://...">
+<div class="actions"><button class="warn" id="nvb">Round badhao & client ko bhejo</button></div></div>
+<div class="card"><h2>Purane rounds</h2><ul class="list" id="old"></ul></div>
+<div class="actions"><button class="red" id="del">Project delete karo</button></div>
+</div><script src="/static/common.js"></script><script>
+const T=location.pathname.split('/').pop();let P,player;
+const li=c=>`<li class="${c.done?'done':''}"><input type="checkbox" ${c.done?'checked':''} data-id="${c.id}" style="width:auto;margin-top:4px"><span class="ts" data-t="${c.ts??''}">${fmt(c.ts)}</span><div><div class="txt">${esc(c.text)}</div>${c.audio_file?`<audio controls src="/audio/${c.audio_file}"></audio>`:''}<div class="mute">${esc(c.author)}</div></div></li>`;
+function waLink(extra){const link=location.origin+'/r/'+P.review_token;const ph=(P.client_phone||'');
+ const msg=`Namaste ${P.client_name||''} 🙏\n"${P.title}" ${extra||'ka video ready hai'}. Yahan dekh ke comment / voice note do, ya Approve dabao:\n${link}`+(P.amount_due>0?`\n\nExtra revisions ka ₹${P.amount_due} link pe UPI se pay kar sakte hain.`:'');
+ return `https://wa.me/${ph?(ph.length===10?'91'+ph:ph):''}?text=${encodeURIComponent(msg)}`}
+async function load(){const d=await api('/api/editor/'+T);P=d.project;
+ if(!player)player=mountPlayer($('#pl'),P.video_url);
+ $('#title').textContent=P.title;$('#sub').textContent=`Client: ${P.client_name||'-'} • Round ${P.round} • ${P.free_rounds} free rounds`;
+ $('#rl').value=location.origin+'/r/'+P.review_token;$('#open').href='/r/'+P.review_token;$('#wa').href=waLink();
+ $('#st').innerHTML=P.status==='approved'?`<span class="pill ok">Approved ${P.approved_at||''}</span>`:'<span class="pill rev">Review mein</span>';
+ const next=P.round+1,extra=Math.max(0,next-P.free_rounds);
+ $('#rinfo').textContent=extra>0?`Round ${next} paid hoga: client ko total ₹${extra*P.extra_round_fee} dikhega (UPI).`:`Round ${next} free hai.`;
+ const cur=d.comments.filter(c=>c.round===P.round),old=d.comments.filter(c=>c.round<P.round);
+ $('#cl').innerHTML=cur.length?cur.map(li).join(''):'<li class="mute">Is round mein abhi koi feedback nahi.</li>';
+ $('#old').innerHTML=old.length?old.map(c=>li(c).replace('<li','<li data-r').replace('<span class="ts"',`<span class="pill rev">R${c.round}</span><span class="ts"`)).join(''):'<li class="mute">—</li>';
+ document.querySelectorAll('.ts').forEach(e=>e.onclick=()=>e.dataset.t&&player.seek(+e.dataset.t));
+ document.querySelectorAll('input[type=checkbox]').forEach(e=>e.onchange=async()=>{await api(`/api/editor/${T}/comments/${e.dataset.id}/toggle`,{method:'POST'});load()});}
+$('#ai').onclick=async()=>{const r=await api(`/api/editor/${T}/tasks`);const o=$('#aio');o.classList.remove('hidden');
+ o.textContent=r.tasks.length?r.tasks.map((t,i)=>r.source==='ai'?t:`${i+1}. ${t}`).join('\n')+(r.source==='basic'?'\n\n(AI key set karne pe ye aur saaf banegi — README dekho)':''):'Koi feedback nahi.'};
+$('#nvb').onclick=async()=>{await api(`/api/editor/${T}/new-version`,{method:'POST',body:JSON.stringify({video_url:$('#nv').value.trim()||null})});
+ if($('#nv').value.trim()){player=null;$('#pl').innerHTML=''}$('#nv').value='';await load();toast('Naya round shuru');window.open(waLink('ka naya version ready hai'),'_blank')};
+$('#del').onclick=async()=>{if(!confirm('Pakka delete? Saare comments bhi chale jayenge.'))return;await api('/api/editor/'+T,{method:'DELETE'});
+ localStorage.setItem('editlink_projects',JSON.stringify(JSON.parse(localStorage.getItem('editlink_projects')||'[]').filter(p=>p.e!==T)));location.href='/'};
+load().catch(e=>{$('#title').textContent=e.message});
+</script></body></html>
